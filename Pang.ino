@@ -11,7 +11,7 @@
 
 #include <SPI.h>
 #include <EEPROM.h>
-#include <Core.h>
+//#include <Core.h>
 #include "Arduboy.h"
 #include "bitmaps.h"
 #include "globals.h"
