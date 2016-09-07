@@ -23,7 +23,6 @@ class Ball
     void Simulate();
     void Draw();
     void Serve();
-    void CheckCollision();
     void BounceBall( float dX, float dY, int soundType );  // Direction by sign
     void Reset();
     void Show();

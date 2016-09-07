@@ -7,7 +7,7 @@ const byte PROGMEM titleScore [] =
   0x90,
   87, 0, 200, 0x80,
   0x90,
-  92, 1, 300, 0x80, 
+  92, 1, 44, 0x80,
   0xf0
 };
 
