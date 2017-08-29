@@ -55,10 +55,10 @@ void Ball::BounceBall(float dX, float dY, int soundType) // Change direction by 
 
   // Wall
   if ( soundType == 1 )
-    arduboy.tunes.tone(294, 100);
+    tunes.tone(294, 100);
   // Paddle
   else if ( soundType = 2 )
-    arduboy.tunes.tone(622, 100);
+    tunes.tone(622, 100);
 }
 
 void Ball::Reset()

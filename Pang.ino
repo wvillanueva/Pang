@@ -9,12 +9,8 @@
  version 2.1 of the License, or (at your option) any later version.
  */
 
-#include <SPI.h>
-#include <EEPROM.h>
-//#include <Core.h>
-#include "Arduboy.h"
-#include "bitmaps.h"
 #include "globals.h"
+#include "bitmaps.h"
 #include "paddle.h"
 #include "ball.h"
 #include "sound.h"
@@ -45,6 +41,18 @@ void setup()
   GameBall_ptr = NULL;
   
   arduboy.begin();
+
+  // audio setup
+  tunes.initChannel(PIN_SPEAKER_1);
+#ifndef AB_DEVKIT
+  // if not a DevKit
+  tunes.initChannel(PIN_SPEAKER_2);
+#else
+  // if it's a DevKit
+  tunes.initChannel(PIN_SPEAKER_1); // use the same pin for both channels
+  tunes.toneMutesScore(true);       // mute the score when a tone is sounding
+#endif
+
   milliPerFrame = (1.0f / targetFPS);
   lastUpdateTime = millis();
   debug = 0.0f;
@@ -68,7 +76,7 @@ void loop()
   {
     // Boot
     case 0:
-    BootScreenLoop();
+    Bootup();
     break;
     
     // Menu
@@ -100,28 +108,21 @@ void loop()
   arduboy.display();
 }
 
-// The Nintendo style GameBoy boot up sequence
-void BootScreenLoop()
+void Bootup()
 {
-  arduboy.drawSlowXYBitmap( 40, ArduboyMarkerPosY, arduboyBitmap, 48, 8, 1 );
-  ArduboyMarkerPosY += 10 * milliPerFrame;
-
-  if ( ArduboyMarkerPosY >= 28 )
-  {
-    arduboy.tunes.tone( 987, 160 );
-    delay(160);
-    arduboy.tunes.tone( 1318, 350 );
-    delay(2000);
-    GameState = 1;
-    arduboy.tunes.playScore( titleScore );
-  }
+  tunes.tone( 987, 160 );
+  delay(160);
+  tunes.tone( 1318, 350 );
+  delay(2000);
+  GameState = 1;
+  tunes.playScore( titleScore );
 }
 
 // The simple front end main menu
 void MenuLoop()
 {
   arduboy.drawSlowXYBitmap( TitleXPos, 20, title, 62, 20, 1 );
-  if ( arduboy.getInput() )
+  if ( arduboy.buttonsState() )
   {
     GameState = 2;
     ResetGame();
@@ -281,10 +282,10 @@ void CheckCollision()
       GameBall.Show();
       GameBall.Reset();
       TimeToServe = TimeToServerDefault;
-      arduboy.tunes.playScore( scoreScore );
+      tunes.playScore( scoreScore );
     }
     else
-      arduboy.tunes.playScore( winScore );
+      tunes.playScore( winScore );
   }
   // Player 1 Scored
   else if ( GameBall.posX > ( screenWidth + ( 2 * GameBall.ballSize ) ) )
@@ -297,10 +298,10 @@ void CheckCollision()
       GameBall.Show();
       GameBall.Reset();
       TimeToServe = TimeToServerDefault;
-      arduboy.tunes.playScore( scoreScore );
+      tunes.playScore( scoreScore );
     }
     else
-      arduboy.tunes.playScore( winScore );
+      tunes.playScore( winScore );
   }
   else if ( paddle1XDelta == ( GameBall.ballSize / 2 ) && abs(paddle1YDelta) < collisionYDeltaMax_P1 )
   {

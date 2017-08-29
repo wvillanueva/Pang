@@ -1,6 +1,8 @@
 #include "globals.h"
 
-Arduboy arduboy;
+Arduboy2 arduboy;
+ArduboyPlaytune tunes(arduboy.audio.enabled);
+
 int screenWidth = 128;
 int screenHeight = 64;
 int targetFPS = 60;
