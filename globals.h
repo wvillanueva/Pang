@@ -1,9 +1,12 @@
 #ifndef GLOBALS_H
 #define GLOABLS_H
 
-#include "Arduboy.h"
+#include <Arduboy2.h>
+#include <ArduboyPlaytune.h>
 
-extern Arduboy arduboy;
+extern Arduboy2 arduboy;
+extern ArduboyPlaytune tunes;
+
 extern int screenWidth;
 extern int screenHeight;
 extern int targetFPS;

@@ -9,16 +9,12 @@
  version 2.1 of the License, or (at your option) any later version.
  */
 
-#include <SPI.h>
-#include <EEPROM.h>
-//#include <Core.h>
-#include "Arduboy.h"
-#include <ab_printer.h>
-#include "bitmaps.h"
 #include "globals.h"
+#include "bitmaps.h"
 #include "paddle.h"
 #include "ball.h"
 #include "sound.h"
+
 
 // GameState
 // 0 = Game Not Started
@@ -38,15 +34,25 @@ int Player1Score;
 int Player2Score;
 int Winner;
 
-AbPrinter TextPrinter(arduboy);
-
 void setup() 
 {
   Paddle_1_ptr = NULL;
   Paddle_2_ptr = NULL;
   GameBall_ptr = NULL;
   
-  arduboy.start();
+  arduboy.begin();
+
+  // audio setup
+  tunes.initChannel(PIN_SPEAKER_1);
+#ifndef AB_DEVKIT
+  // if not a DevKit
+  tunes.initChannel(PIN_SPEAKER_2);
+#else
+  // if it's a DevKit
+  tunes.initChannel(PIN_SPEAKER_1); // use the same pin for both channels
+  tunes.toneMutesScore(true);       // mute the score when a tone is sounding
+#endif
+
   milliPerFrame = (1.0f / targetFPS);
   lastUpdateTime = millis();
   debug = 0.0f;
@@ -55,8 +61,6 @@ void setup()
 
   // If Debugging, activate the Serial Monitor
   //Serial.begin( 9600 );
-
-//  TextPrinter = new AbPrinter( arduboy );
 }
 
 void loop() 
@@ -65,14 +69,14 @@ void loop()
   if ( millis() < lastUpdateTime + milliPerFrame ) return;
   lastUpdateTime = millis();
   
-  arduboy.clearDisplay();
+  arduboy.clear();
 
   // Execute the loop depending on Game State
   switch ( GameState )
   {
     // Boot
     case 0:
-    BootScreenLoop();
+    Bootup();
     break;
     
     // Menu
@@ -104,95 +108,27 @@ void loop()
   arduboy.display();
 }
 
-// The Nintendo style GameBoy boot up sequence
-void BootScreenLoop()
+void Bootup()
 {
-  arduboy.drawSlowXYBitmap( 40, ArduboyMarkerPosY, arduboyBitmap, 48, 8, 1 );
-  ArduboyMarkerPosY += 10 * milliPerFrame;
-
-  if ( ArduboyMarkerPosY >= 28 )
-  {
-//    ArduboyPlaytune.tone( 987, 160 );
-    delay(160);
-//    ArduboyPlaytune.tone( 1318, 350 );
-//    ArduboyPlaytune.playScore( scoreScore );
-    delay(2000);
-    GameState = 1;
-//    ArduboyPlaytune.playScore( titleScore );
-  }
+  tunes.tone( 987, 160 );
+  delay(160);
+  tunes.tone( 1318, 350 );
+  delay(2000);
+  GameState = 1;
+  tunes.playScore( titleScore );
 }
 
 // The simple front end main menu
 void MenuLoop()
 {
   arduboy.drawSlowXYBitmap( TitleXPos, 20, title, 62, 20, 1 );
-  if ( arduboy.getInput() )
+  if ( arduboy.buttonsState() )
   {
     GameState = 2;
     ResetGame();
     GameBall.Show();
     GameBall.Reset();
     TimeToServe = 2;
-  }
-}
-
-// Perhaps not the most elegant collision system but it basically checks bounds in the X and then bounds in the Y and 
-// sees if the graphics are going to collide.  This took the most time to write and I personally want
-// to relearn methods of collision on hardware that doesn't run PhysX haha!
-void CheckCollision()
-{
-  int paddle1XDelta = GameBall.posX - Paddle_1.posX;
-  int paddle1YDelta = GameBall.posY - Paddle_1.posY;
-  int paddle2XDelta = GameBall.posX - Paddle_2.posX;
-  int paddle2YDelta = GameBall.posY - Paddle_2.posY;
-
-  int collisionYDeltaMax_P1 = (Paddle_1.sizeY / 2) + 1 + (GameBall.ballSize / 2);
-  int collisionYDeltaMax_P2 = (Paddle_2.sizeY / 2) + 1 + (GameBall.ballSize / 2);
-  
-  // Player 2 scored
-  if ( GameBall.posX < ( -2 * GameBall.ballSize ) )
-  {
-    // Score
-    Player2Score++;
-    GameBall.Hide();
-    if ( !CheckGameOver() )
-    {
-      GameBall.Show();
-      GameBall.Reset();
-      TimeToServe = TimeToServerDefault;
-//      ArduboyPlaytune.playScore( scoreScore );
-    }
-//    else
-//      ArduboyPlaytune.playScore( winScore );
-  }
-  // Player 1 Scored
-  else if ( GameBall.posX > ( screenWidth + ( 2 * GameBall.ballSize ) ) )
-  {
-    // Score
-    Player1Score++;
-    GameBall.Hide();
-    if ( !CheckGameOver() )
-    {
-      GameBall.Show();
-      GameBall.Reset();
-      TimeToServe = TimeToServerDefault;
-//      ArduboyPlaytune.playScore( scoreScore );
-    }
-//    else
-//      ArduboyPlaytune.playScore( winScore );
-  }
-  else if ( paddle1XDelta == ( GameBall.ballSize / 2 ) && abs(paddle1YDelta) < collisionYDeltaMax_P1 )
-  {
-    // Paddle 1 Hit
-    float yVelocity = MapRange( paddle1YDelta * 1.0f, Paddle_1.sizeY / -2.0f, Paddle_1.sizeY / 2.0f, -ballReboundRange, ballReboundRange );
-    GameBall.BounceBall( -1.05, yVelocity, 2 );
-  }
-  else if ( paddle2XDelta == ( GameBall.ballSize / -2 + 1) && abs(paddle2YDelta) < collisionYDeltaMax_P2 )
-  {
-    // Paddle 2 Hit
-    float yVelocity = MapRange( paddle2YDelta, Paddle_2.sizeY / -2.0f, Paddle_2.sizeY / 2.0f, -ballReboundRange, ballReboundRange );
-    debug = yVelocity;
-    GameBall.BounceBall( -1.05, yVelocity, 2 );
   }
 }
 
@@ -248,12 +184,12 @@ void GameLoop()
 // Using built in print to put up the scores.
 void DrawScores()
 {
-  TextPrinter.setSize( 1 );
-  TextPrinter.setCursor( screenWidth / 2 - 15, 5 );
-  TextPrinter.print( Player1Score );
+  arduboy.setTextSize( 1 );
+  arduboy.setCursor( screenWidth / 2 - 15, 5 );
+  arduboy.print( Player1Score );
 
-  TextPrinter.setCursor( screenWidth / 2 + 10, 5 );
-  TextPrinter.print( Player2Score );
+  arduboy.setCursor( screenWidth / 2 + 10, 5 );
+  arduboy.print( Player2Score );
 }
 
 // Is the game over?  If so record it and return true/false
@@ -285,10 +221,10 @@ void GameOver()
 // Draw the Game Over Screen
 void DrawGameOver()
 {
-  TextPrinter.setSize( 1 );
-  TextPrinter.setCursor( screenWidth / 2 - 40, screenHeight / 2 );
+  arduboy.setTextSize( 1 );
+  arduboy.setCursor( screenWidth / 2 - 40, screenHeight / 2 );
   sprintf(text, "Player %u Wins!", Winner);
-  TextPrinter.print( text );
+  arduboy.print( text );
 
   TimeOnGameOverScreen -= milliPerFrame;
   if ( TimeOnGameOverScreen <= 0 )
@@ -319,6 +255,66 @@ void ResetGame()
   {
     GameBall = Ball( screenWidth / 2, screenHeight / 2, 4 );
     GameBall_ptr = &GameBall;
+  }
+}
+
+// Perhaps not the most elegant collision system but it basically checks bounds in the X and then bounds in the Y and 
+// sees if the graphics are going to collide.  This took the most time to write and I personally want
+// to relearn methods of collision on hardware that doesn't run PhysX haha!
+void CheckCollision()
+{
+  int paddle1XDelta = GameBall.posX - Paddle_1.posX;
+  int paddle1YDelta = GameBall.posY - Paddle_1.posY;
+  int paddle2XDelta = GameBall.posX - Paddle_2.posX;
+  int paddle2YDelta = GameBall.posY - Paddle_2.posY;
+
+  int collisionYDeltaMax_P1 = (Paddle_1.sizeY / 2) + 1 + (GameBall.ballSize / 2);
+  int collisionYDeltaMax_P2 = (Paddle_2.sizeY / 2) + 1 + (GameBall.ballSize / 2);
+  
+  // Player 2 scored
+  if ( GameBall.posX < ( -2 * GameBall.ballSize ) )
+  {
+    // Score
+    Player2Score++;
+    GameBall.Hide();
+    if ( !CheckGameOver() )
+    {
+      GameBall.Show();
+      GameBall.Reset();
+      TimeToServe = TimeToServerDefault;
+      tunes.playScore( scoreScore );
+    }
+    else
+      tunes.playScore( winScore );
+  }
+  // Player 1 Scored
+  else if ( GameBall.posX > ( screenWidth + ( 2 * GameBall.ballSize ) ) )
+  {
+    // Score
+    Player1Score++;
+    GameBall.Hide();
+    if ( !CheckGameOver() )
+    {
+      GameBall.Show();
+      GameBall.Reset();
+      TimeToServe = TimeToServerDefault;
+      tunes.playScore( scoreScore );
+    }
+    else
+      tunes.playScore( winScore );
+  }
+  else if ( paddle1XDelta == ( GameBall.ballSize / 2 ) && abs(paddle1YDelta) < collisionYDeltaMax_P1 )
+  {
+    // Paddle 1 Hit
+    float yVelocity = MapRange( paddle1YDelta * 1.0f, Paddle_1.sizeY / -2.0f, Paddle_1.sizeY / 2.0f, -ballReboundRange, ballReboundRange );
+    GameBall.BounceBall( -1.05, yVelocity, 2 );
+  }
+  else if ( paddle2XDelta == ( GameBall.ballSize / -2 + 1) && abs(paddle2YDelta) < collisionYDeltaMax_P2 )
+  {
+    // Paddle 2 Hit
+    float yVelocity = MapRange( paddle2YDelta, Paddle_2.sizeY / -2.0f, Paddle_2.sizeY / 2.0f, -ballReboundRange, ballReboundRange );
+    debug = yVelocity;
+    GameBall.BounceBall( -1.05, yVelocity, 2 );
   }
 }
 
